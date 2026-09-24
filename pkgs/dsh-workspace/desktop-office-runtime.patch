@@ -1,11 +1,11 @@
 diff --git a/apps/desktop-host/src/index.ts b/apps/desktop-host/src/index.ts
-index ecbff83..c9e25d2 100644
+index 4a47a92..8e248d7 100644
 --- a/apps/desktop-host/src/index.ts
 +++ b/apps/desktop-host/src/index.ts
-@@ -70,11 +70,14 @@ async function main(): Promise<void> {
-   process.once('disconnect', () => { void stop() })
+@@ -92,11 +92,14 @@ async function main(): Promise<void> {
    const { ctx } = await application
    control.updateTasks = installDesktopUpdateTaskControl(ctx)
+   control.quitInspection = installDesktopQuitInspection(ctx)
 -  await ctx.plugin(desktopOffice, {
 -    runtimeDir,
 -    source: process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime'),

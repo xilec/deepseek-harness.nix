@@ -1,56 +1,9 @@
---- a/apps/desktop/src/main.ts
-+++ b/apps/desktop/src/main.ts
-@@ -1,3 +1,4 @@
-+import { initializeNixProfile } from './nix-profile.ts'
- import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
- /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
- 
-@@ -285,7 +285,8 @@
- }
- 
- async function main(): Promise<void> {
-+  initializeNixProfile()
-   void pruneCrashReports(app.getPath('logs'))
-   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
-   const updateJournal = journalDirectory === undefined ? undefined : new DesktopUpdateJournal(journalDirectory, app.getVersion())
-   const resources = runtimeResources()
---- a/apps/desktop/src/paths.ts
-+++ b/apps/desktop/src/paths.ts
-@@ -16,7 +16,7 @@
-  */
- export function resolveDesktopPaths(dshHome: string = resolveDshHome()): DesktopPaths {
-   return {
--    profile: join(dshHome, 'profiles', 'desktop'),
--    lock: join(dshHome, 'profiles', 'desktop', 'lock'),
-+    profile: join(dshHome, 'profiles', process.env.DSH_NIX_DESKTOP_PROFILE ?? 'desktop'),
-+    lock: join(dshHome, 'profiles', process.env.DSH_NIX_DESKTOP_PROFILE ?? 'desktop', 'lock'),
-   }
- }
---- a/apps/desktop/src/project-manager.ts
-+++ b/apps/desktop/src/project-manager.ts
-@@ -74,6 +74,9 @@
-    * @returns Backup path after the locked profile write, or undefined if the patch was absent.
-    */
-   async disableAllPlugins(): Promise<string | undefined> {
-+    if (process.env.DSH_NIX_DESKTOP_PROFILE_MODE === 'managed') {
-+      throw new Error('Edit programs.dsh.profiles in Nix to disable managed plugins')
-+    }
-     return this.withLock(() => sanitizeProfile('dsh', this.paths.profile, WEB_PROFILE.bundles))
-   }
- 
-@@ -81,6 +84,8 @@
-    * Load application metadata and prepare the external plugin profile without installing packages.
-    */
-   async applyRelease(): Promise<void> {
-+    // Nix seeds this profile before startup and owns its package declarations.
-+    if (process.env.DSH_NIX_DESKTOP_PROFILE !== undefined) return
-     await this.withLock(() => {
-       // Validation only: an unreadable or mismatched runtime descriptor stops preparation before the Host starts.
-       readDesktopRuntime(this.runtime.dsh)
+diff --git a/apps/desktop-host/src/index.ts b/apps/desktop-host/src/index.ts
+index 4a47a92..9cf0aa6 100644
 --- a/apps/desktop-host/src/index.ts
 +++ b/apps/desktop-host/src/index.ts
-@@ -21,7 +21,7 @@
-   const profile = loadProfileDirectory('dsh', projectDir, installAnchor)
+@@ -24,7 +24,7 @@ async function main(): Promise<void> {
+   reportSkippedBundles('dsh', profile)
    const application = runProfile({
      environment: loadLayeredEnv('dsh'),
 -    profile: 'desktop',
@@ -58,6 +11,26 @@
      resolvedProfile: { profile, installAnchor },
      patchFiles: [],
      args: ['--no-open', '--port', '19387'],
+diff --git a/apps/desktop/src/main.ts b/apps/desktop/src/main.ts
+index a59a8a8..4d281da 100644
+--- a/apps/desktop/src/main.ts
++++ b/apps/desktop/src/main.ts
+@@ -1,3 +1,4 @@
++import { initializeNixProfile } from './nix-profile.ts'
+ import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
+ /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
+ 
+@@ -308,6 +309,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
+ }
+ 
+ async function main(): Promise<void> {
++  initializeNixProfile()
+   void pruneCrashReports(app.getPath('logs'))
+   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
+   const updateJournal = journalDirectory === undefined ? undefined : new DesktopUpdateJournal(journalDirectory, app.getVersion())
+diff --git a/apps/desktop/src/nix-profile.ts b/apps/desktop/src/nix-profile.ts
+new file mode 100644
+index 0000000..9729ceb
 --- /dev/null
 +++ b/apps/desktop/src/nix-profile.ts
 @@ -0,0 +1,20 @@
@@ -81,3 +54,40 @@
 +  process.env.DSH_NIX_DESKTOP_PROFILE_MODE = config.mode
 +  execFileSync(config.seeder, [config.profile], { stdio: 'inherit', timeout: 60_000 })
 +}
+diff --git a/apps/desktop/src/paths.ts b/apps/desktop/src/paths.ts
+index cf03e38..c7e3d77 100644
+--- a/apps/desktop/src/paths.ts
++++ b/apps/desktop/src/paths.ts
+@@ -16,7 +16,7 @@ export interface DesktopPaths {
+  */
+ export function resolveDesktopPaths(dshHome: string = resolveDshHome()): DesktopPaths {
+   return {
+-    profile: join(dshHome, 'profiles', 'desktop'),
+-    lock: join(dshHome, 'profiles', 'desktop', 'lock'),
++    profile: join(dshHome, 'profiles', process.env.DSH_NIX_DESKTOP_PROFILE ?? 'desktop'),
++    lock: join(dshHome, 'profiles', process.env.DSH_NIX_DESKTOP_PROFILE ?? 'desktop', 'lock'),
+   }
+ }
+diff --git a/apps/desktop/src/project-manager.ts b/apps/desktop/src/project-manager.ts
+index 270d87d..38cb8bf 100644
+--- a/apps/desktop/src/project-manager.ts
++++ b/apps/desktop/src/project-manager.ts
+@@ -74,6 +74,9 @@ export class DesktopProjectManager {
+    * @returns Backup path after the locked profile write, or undefined if the patch was absent.
+    */
+   async disableAllPlugins(): Promise<string | undefined> {
++    if (process.env.DSH_NIX_DESKTOP_PROFILE_MODE === 'managed') {
++      throw new Error('Edit programs.dsh.profiles in Nix to disable managed plugins')
++    }
+     return this.withLock(() => sanitizeProfile('dsh', this.paths.profile, WEB_PROFILE.bundles))
+   }
+ 
+@@ -81,6 +84,8 @@ export class DesktopProjectManager {
+    * Load application metadata and prepare the external plugin profile without installing packages.
+    */
+   async applyRelease(): Promise<void> {
++    // Nix seeds this profile before startup and owns its package declarations.
++    if (process.env.DSH_NIX_DESKTOP_PROFILE !== undefined) return
+     await this.withLock(() => {
+       // Validation only: an unreadable or mismatched runtime descriptor stops preparation before the Host starts.
+       readDesktopRuntime(this.runtime.dsh)

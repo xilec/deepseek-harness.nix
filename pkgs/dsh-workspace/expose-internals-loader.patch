@@ -1,10 +1,11 @@
 diff --git a/packages/boot/app-boot/src/profile-resolution/resolver.ts b/packages/boot/app-boot/src/profile-resolution/resolver.ts
+index 27473ba..633814e 100644
 --- a/packages/boot/app-boot/src/profile-resolution/resolver.ts
 +++ b/packages/boot/app-boot/src/profile-resolution/resolver.ts
-@@ -517,20 +517,37 @@
+@@ -610,20 +610,37 @@ class ResolutionRouter {
    }
  }
-
+ 
 -function internalModules(): InternalModules {
 +/**
 + * Load one Node internal module through whichever carrier the runtime exposes.
