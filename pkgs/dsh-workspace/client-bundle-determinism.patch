@@ -1,10 +1,9 @@
-diff --git a/packages/client/tsdown.client.ts b/packages/client/tsdown.client.ts
 --- a/packages/client/tsdown.client.ts
 +++ b/packages/client/tsdown.client.ts
-@@ -857,11 +857,11 @@
+@@ -1066,11 +1066,11 @@
        resolveId(source: string, importer: string | undefined) {
          if (!source.endsWith('.module.css')) return null
-         const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
+         const abs = resolveStylesheet(source, importer)
 -        return CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
 +        return CSS_VIRTUAL_PREFIX + relative(process.cwd(), abs) + CSS_VIRTUAL_SUFFIX
        },
@@ -15,10 +14,10 @@ diff --git a/packages/client/tsdown.client.ts b/packages/client/tsdown.client.ts
          // The virtual id otherwise hides the physical stylesheet from Rolldown's watch graph.
          this.addWatchFile(fileId)
          const source = await readFile(fileId)
-@@ -885,11 +885,11 @@
+@@ -1096,11 +1096,11 @@
          if (!source.endsWith(`.css${INLINE_CSS_QUERY}`)) return null
          const stylesheet = source.slice(0, -INLINE_CSS_QUERY.length)
-         const abs = importer !== undefined ? sourceAssetPath(stylesheet, importer) : stylesheet
+         const abs = resolveStylesheet(stylesheet, importer)
 -        return INLINE_CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
 +        return INLINE_CSS_VIRTUAL_PREFIX + relative(process.cwd(), abs) + CSS_VIRTUAL_SUFFIX
        },
@@ -29,10 +28,10 @@ diff --git a/packages/client/tsdown.client.ts b/packages/client/tsdown.client.ts
          this.addWatchFile(fileId)
          const source = await readFile(fileId)
          const stylesheetAssets = assets.urlRewrite(this, fileId)
-@@ -901,11 +901,11 @@
+@@ -1117,11 +1117,11 @@
        resolveId(source: string, importer: string | undefined) {
          if (!source.endsWith('.css') || source.endsWith('.module.css')) return null
-         const abs = importer !== undefined ? sourceAssetPath(source, importer) : source
+         const abs = resolveStylesheet(source, importer)
 -        return GLOBAL_CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
 +        return GLOBAL_CSS_VIRTUAL_PREFIX + relative(process.cwd(), abs) + CSS_VIRTUAL_SUFFIX
        },
